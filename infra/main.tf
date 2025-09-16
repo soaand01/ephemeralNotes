@@ -88,5 +88,6 @@ resource "azurerm_storage_account" "tf_backend" {
 
 resource "azurerm_storage_container" "tfstate" {
   name                  = "tfstate"
+  storage_account_id = azurerm_storage_account.tf_backend.id
   container_access_type = "private"
 }
