@@ -20,6 +20,11 @@ on:
 jobs:
   provision-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -72,10 +77,6 @@ jobs:
       - name: Terraform Init
         working-directory: infra
         env:
-          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           STORAGE_ACCOUNT: ${{ env.STORAGE_ACCOUNT }}
           STORAGE_CONTAINER: ${{ env.STORAGE_CONTAINER }}
           TFSTATE_KEY: ${{ env.TFSTATE_KEY }}
@@ -88,11 +89,6 @@ jobs:
 
       - name: Terraform Apply
         working-directory: infra
-        env:
-          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: |
           terraform apply -auto-approve \
             -var="resource_group=${{ github.event.inputs.resource_group }}" \
