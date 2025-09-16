@@ -65,75 +65,28 @@ jobs:
             exit 3
           fi
 
-      
-
       - name: Install Azure CLI extensions
         run: |
           az extension add --name webapp || true
 
-      - name: Prepare Terraform backend (create storage account + container)
-        id: tf-backend
+      - name: Set Terraform backend variables
         run: |
-          set -euo pipefail
-          # Read optional tfvars if present to compute resource names (project, env, naming_suffix, location)
-          project="ephemeralnotes"
-          env="prod"
-          naming_suffix=""
-          location="westeurope"
-          if [ -f infra/terraform.tfvars ]; then
-            # crude parser for key = "value" lines
-            project=$(grep '^project\s*=' infra/terraform.tfvars | sed -E 's/.*=\s*"([^"]+)".*/\1/' || echo "$project")
-            env=$(grep '^env\s*=' infra/terraform.tfvars | sed -E 's/.*=\s*"([^"]+)".*/\1/' || echo "$env")
-            naming_suffix=$(grep '^naming_suffix\s*=' infra/terraform.tfvars | sed -E 's/.*=\s*"([^"]*)".*/\1/' || echo "$naming_suffix")
-            location=$(grep '^location\s*=' infra/terraform.tfvars | sed -E 's/.*=\s*"([^"]+)".*/\1/' || echo "$location")
-          fi
-
-          prefix=$(echo "${project}-${env}" | tr '[:upper:]' '[:lower:]')
-          suffix=""
-          if [ -n "$naming_suffix" ]; then suffix="-$naming_suffix"; fi
-          RESOURCE_GROUP="${prefix}-rg${suffix}"
-          LOCATION="$location"
-          echo "Ensuring resource group: $RESOURCE_GROUP in $LOCATION"
-          echo "Current subscription:"; az account show || true
-          az group create --name "$RESOURCE_GROUP" --location "$LOCATION" --subscription "$ARM_SUBSCRIPTION_ID"
-
-          # Use deterministic storage account name for backend
-          SA_NAME="saephemeralnotestf"
-          SA_NAME=$(echo "$SA_NAME" | tr '[:upper:]' '[:lower:]')
-          echo "Ensuring storage account $SA_NAME exists in $RESOURCE_GROUP"
-          az storage account show -n "$SA_NAME" -g "$RESOURCE_GROUP" --subscription "$ARM_SUBSCRIPTION_ID" >/dev/null 2>&1 || \
-            az storage account create --name "$SA_NAME" --resource-group "$RESOURCE_GROUP" --location "$LOCATION" --sku Standard_LRS --kind StorageV2 --access-tier Hot --subscription "$ARM_SUBSCRIPTION_ID"
-
-          KEY=$(az storage account keys list -n "$SA_NAME" -g "$RESOURCE_GROUP" --subscription "$ARM_SUBSCRIPTION_ID" --query '[0].value' -o tsv)
-          CONTAINER_NAME="tfstate"
-          az storage container create --name "$CONTAINER_NAME" --account-name "$SA_NAME" --account-key "$KEY" --subscription "$ARM_SUBSCRIPTION_ID" || true
-
-          echo "STORAGE_ACCOUNT=$SA_NAME" >> $GITHUB_ENV
-          echo "STORAGE_CONTAINER=$CONTAINER_NAME" >> $GITHUB_ENV
-          # TFSTATE key: use computed webapp name
-          WEBAPP_NAME="${prefix}${suffix}"
-          echo "TFSTATE_KEY=${WEBAPP_NAME}.tfstate" >> $GITHUB_ENV
-          echo "RESOURCE_GROUP=$RESOURCE_GROUP" >> $GITHUB_ENV
-          echo "LOCATION=$LOCATION" >> $GITHUB_ENV
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: '1.5.7'
+          echo "RESOURCE_GROUP=rg-ephemeralnotes" >> $GITHUB_ENV
+          echo "STORAGE_ACCOUNT=saephemeralnotestf" >> $GITHUB_ENV
+          echo "TFSTATE_KEY=ephemeralnotes.tfstate" >> $GITHUB_ENV
 
       - name: Terraform Init
         working-directory: infra
         env:
-          STORAGE_ACCOUNT: ${{ env.STORAGE_ACCOUNT }}
-          STORAGE_CONTAINER: ${{ env.STORAGE_CONTAINER }}
-          TFSTATE_KEY: ${{ env.TFSTATE_KEY }}
-          RESOURCE_GROUP: ${{ env.RESOURCE_GROUP }}
+          ARM_SUBSCRIPTION_ID: ${{ env.ARM_SUBSCRIPTION_ID }}
+          ARM_CLIENT_ID: ${{ env.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ env.ARM_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ env.ARM_TENANT_ID }}
         run: |
-          terraform init -backend=true \
-            -backend-config="resource_group_name=$RESOURCE_GROUP" \
-            -backend-config="storage_account_name=$STORAGE_ACCOUNT" \
-            -backend-config="container_name=$STORAGE_CONTAINER" \
-            -backend-config="key=$TFSTATE_KEY"
+          terraform init -backend-config="resource_group_name=${{ env.RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ env.STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=${{ env.TFSTATE_KEY }}"
 
       - name: Terraform Apply/Destroy
         working-directory: infra
