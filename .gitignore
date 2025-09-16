@@ -1,1 +1,38 @@
-.venv
+# Python virtual environments
+venv/
+.venv/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Pytest cache
+.pytest_cache/
+
+# Coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+
+# Environment variables
+.env
+env/
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Docker
+.dockerignore
+
+# Local extras
+requirements_plain.txt

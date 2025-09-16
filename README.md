@@ -9,6 +9,8 @@ A small, privacy-minded ephemeral notes app for local development and testing. N
 - Local quick start: see "Quick start (local)" below
 - Docker quick start: see "Quick start (docker)"
 - Tech used: Flask, Redis, Gunicorn, Docker
+ - UI updates: homepage now shows two stat cards (🗂️ Total Notes and 🔥 Active Notes)
+ - Recent notes: the Recent Notes list shows the 12 most recent creations (was 10)
 
 ---
 
@@ -85,6 +87,11 @@ Notes for Docker / production-ready deploy:
 - When running behind TLS (e.g., Azure Web Apps, a reverse proxy), set `Talisman(..., force_https=True)` or ensure TLS is enforced by the platform.
 - The app exposes `/healthz` for a simple health probe.
 
+Local cleanup & git hygiene
+
+- The repository excludes local virtualenvs and cache files via `.gitignore` (e.g. `.venv/`, `__pycache__/`, `*.pyc`, `.env`).
+- I removed local development artifacts (`.venv/`, `__pycache__`) from the workspace to avoid accidental commits. If you want these removals committed and pushed I can make the commit (you requested manual pushes previously).
+
 ---
 
 ## Tech stack / Used technologies
@@ -97,6 +104,12 @@ Logos are small linked images; if you prefer local logos add them to `static/img
 - 🐳 **Docker** — containerization for local dev and deployment
 
 Other dev tools: `python-dotenv`, `Flask-Limiter`, `Flask-Talisman`, `markdown`, `bleach`.
+
+Recent UI and usability changes
+
+- Homepage now displays two compact stat cards side-by-side: **🗂️ Total Notes** (total created) and **🔥 Active Notes** (currently active keys in Redis). This helps at-a-glance monitoring during local hosting.
+- The Recent Notes table shows the 12 most recent creation events with masked tokens and TTL/flags metadata (no plaintext content shown).
+- Button styles and spacing were unified across pages for visual consistency.
 
 ---
 
@@ -118,6 +131,11 @@ If you'd like, I can add a step-by-step `azure-deploy.md` and a GitHub Actions w
 - Keep `SECRET_KEY` out of the repo. Use environment variables or secrets stores in production.
 - Rotate `SECRET_KEY` if the `.env` was ever committed (there was a local `.env` previously — rotate it now).
 - Consider enabling `force_https=True` in `Talisman` when behind TLS.
+
+Recommended next steps
+
+- Add CSRF protection for form endpoints (Flask-WTF or other CSRF middleware).
+- Consider using Redis keyspace notifications or an atomic counter if you need an exact active-note count (current implementation uses a capped SCAN for a lightweight estimate).
 
 ---
 

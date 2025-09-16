@@ -17,10 +17,10 @@
         <p class="small text-muted">URL expires in <strong>{{ ttl }} seconds</strong>.</p>
 
         <div class="mt-3">
-          <a class="btn btn-sm btn-secondary me-2" href="{{ url_for('index') }}">Create another</a>
-          <a class="btn btn-sm btn-outline-primary me-2" href="{{ url_for('index') }}">Home</a>
+          <a class="btn btn-solid btn-sm me-2" href="{{ url_for('index') }}">Create another</a>
+          <a class="btn btn-solid btn-sm me-2" href="{{ url_for('index') }}">Home</a>
           <form method="post" action="{{ url_for('delete_note_handler', token=token) }}" style="display:inline">
-            <button class="btn btn-sm btn-danger" type="submit">Delete now</button>
+            <button class="btn btn-danger btn-sm" type="submit">Delete now</button>
           </form>
         </div>
       </div>

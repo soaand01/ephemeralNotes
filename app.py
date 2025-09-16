@@ -205,8 +205,8 @@ def index():
 
     notes = []
     try:
-        # fetch only the 10 most recent creation events
-        raw = app.redis_client.lrange('history:creations', 0, 9) or []
+        # fetch only the 12 most recent creation events
+        raw = app.redis_client.lrange('history:creations', 0, 11) or []
         for item in raw:
             try:
                 obj = json.loads(item)
@@ -221,6 +221,16 @@ def index():
             notes.append(obj)
     except Exception:
         notes = []
+    # Compute a lightweight count of active notes without blocking Redis.
+    active_notes = 0
+    try:
+        # Use scan_iter for non-blocking iteration; limit to first 1000 keys for speed.
+        for i, _ in enumerate(app.redis_client.scan_iter(match='note:*', count=1000)):
+            active_notes += 1
+            if i >= 999:
+                break
+    except Exception:
+        active_notes = 0
 
     return render_template(
         "index.html",
@@ -235,7 +245,54 @@ def index():
         },
         total=total_created,
         notes=notes,
+        active_notes=active_notes,
     )
+
+
+def _index_context():
+    """Return the common context used to render the index page.
+
+    This ensures when handlers render `index.html` due to validation errors they
+    pass the same feature flags, ttl choices, labels and recent notes as the
+    normal `index` view.
+    """
+    ttl_choices = [300, 900, 3600] if CUSTOM_TTL_CHOICES else [DEFAULT_TTL_SECONDS]
+    labels = {300: "5 minutes", 900: "15 minutes (default)", 3600: "60 minutes"}
+    try:
+        total_created = int(app.redis_client.get('stats:created_total') or 0)
+    except Exception:
+        total_created = 0
+
+    notes = []
+    try:
+        raw = app.redis_client.lrange('history:creations', 0, 11) or []
+        for item in raw:
+            try:
+                obj = json.loads(item)
+            except Exception:
+                continue
+            try:
+                ts = datetime.fromisoformat(obj.get('created_at'))
+                obj['created_at_display'] = ts.strftime('%Y-%m-%d %H:%M:%S UTC')
+            except Exception:
+                obj['created_at_display'] = obj.get('created_at')
+            notes.append(obj)
+    except Exception:
+        notes = []
+
+    return {
+        'ttl_choices': ttl_choices,
+        'labels': labels,
+        'default_ttl': DEFAULT_TTL_SECONDS,
+        'feature_flags': {
+            'password_protect': PASSWORD_PROTECT,
+            'markdown': MARKDOWN_ENABLED,
+            'custom_ttl': CUSTOM_TTL_CHOICES,
+            'burn_after_read': True,
+        },
+        'total': total_created,
+        'notes': notes,
+    }
 
 
 @app.route("/notes", methods=["POST"])
@@ -243,9 +300,13 @@ def index():
 def create_note():
     content = (request.form.get("content") or "").strip()
     if not content:
-        return render_template("index.html", error="Note cannot be empty."), 400
+        ctx = _index_context()
+        ctx.update({"error": "Note cannot be empty."})
+        return render_template("index.html", **ctx), 400
     if len(content) > MAX_CONTENT_CHARS:
-        return render_template("index.html", error="Note is too long."), 400
+        ctx = _index_context()
+        ctx.update({"error": "Note is too long."})
+        return render_template("index.html", **ctx), 400
 
     ttl = DEFAULT_TTL_SECONDS
     if CUSTOM_TTL_CHOICES:
@@ -272,7 +333,9 @@ def create_note():
         pwd = request.form.get("password", "")
         if pwd:
             if len(pwd) < PASSWORD_POLICY_MINLEN:
-                return render_template("index.html", error="Password too short."), 400
+                ctx = _index_context()
+                ctx.update({"error": "Password too short."})
+                return render_template("index.html", **ctx), 400
             note_obj["password_hash"] = hash_password(pwd)
 
     # Optional view_limit (not enabled)

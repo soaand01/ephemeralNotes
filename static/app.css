@@ -36,8 +36,23 @@ h1,h2,h3,h4{color:#0b1220; /* stronger dark heading for contrast */}
 .btn-dark:hover, .btn-primary-dark:hover{filter:brightness(0.95)}
 .btn-outline-secondary{border-color:rgba(15,23,36,0.06); color:var(--muted)}
 
+/* Solid button variant matching primary look but with consistent padding */
+.btn-solid{background: linear-gradient(180deg,#0f1724,var(--primary)); border:none; color:#fff; padding:0.5rem 0.9rem; border-radius:8px}
+.btn-solid:hover{filter:brightness(0.95)}
+
+/* Danger / destructive button variant using the same style but red */
+.btn-danger{background: linear-gradient(180deg,#7f1d1d,#ef4444); border:none; color:#fff; padding:0.5rem 0.9rem; border-radius:8px}
+.btn-danger:hover{filter:brightness(0.95)}
+
 .stat-number{font-size:2rem; font-weight:700; color:var(--primary)}
 .stat-muted{color:var(--muted)}
+
+/* Compact stat cards used on the homepage */
+.stat-card { border-radius:12px; padding:0; min-height:120px; }
+.stat-card .card-body { padding:1rem; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+
+/* Emoji inside stat title */
+.stat-emoji { font-size:1.2rem; margin-right:0.4rem; }
 
 .table thead th{border-bottom:1px solid rgba(15,23,36,0.06); color:#0b1220; font-weight:700}
 .table tbody td{vertical-align:middle; color:var(--subtext)}
@@ -55,6 +70,9 @@ h1,h2,h3,h4{color:#0b1220; /* stronger dark heading for contrast */}
 .navbar{background: linear-gradient(90deg,#0b1220,#071025);}
 .navbar, .navbar .nav-link, .navbar .navbar-brand, .navbar .navbar-text{color:#fff}
 .navbar .nav-link:hover{color:var(--accent)}
+
+/* Small gap between navbar and page content/forms */
+nav + main { margin-top: 1rem; }
 
 /* Ensure links and important text use primary color when appropriate */
 a, .link-primary{color:var(--primary)}
