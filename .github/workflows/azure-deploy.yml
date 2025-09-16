@@ -49,12 +49,12 @@ jobs:
           echo "Ensuring resource group: $RESOURCE_GROUP in $LOCATION"
           az group create --name "$RESOURCE_GROUP" --location "$LOCATION"
 
-          # Create a reasonably-unique storage account name (lowercase, 3-24 chars)
-          SUFFIX=$(printf "%06d" $(( ${GITHUB_RUN_ID:-0} % 1000000 )))
-          SA_NAME="sa${SUFFIX}"
+          # Use deterministic storage account name for backend
+          SA_NAME="ephemeralnotestf"
           SA_NAME=$(echo "$SA_NAME" | tr '[:upper:]' '[:lower:]')
-          echo "Creating storage account $SA_NAME"
-          az storage account create --name "$SA_NAME" --resource-group "$RESOURCE_GROUP" --location "$LOCATION" --sku Standard_LRS --kind StorageV2 --access-tier Hot
+          echo "Ensuring storage account $SA_NAME exists in $RESOURCE_GROUP"
+          az storage account show -n "$SA_NAME" -g "$RESOURCE_GROUP" >/dev/null 2>&1 || \
+            az storage account create --name "$SA_NAME" --resource-group "$RESOURCE_GROUP" --location "$LOCATION" --sku Standard_LRS --kind StorageV2 --access-tier Hot
 
           KEY=$(az storage account keys list -n "$SA_NAME" -g "$RESOURCE_GROUP" --query '[0].value' -o tsv)
           CONTAINER_NAME="tfstate"
