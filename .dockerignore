@@ -11,7 +11,9 @@ dist/
 *.egg-info
 .git
 .gitignore
+docker-compose.yml
 .env
+*.env
 *.sqlite3
 node_modules
 tests/
