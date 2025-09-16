@@ -106,9 +106,9 @@ jobs:
           OP="${OP:-apply}"
           echo "Operation: $OP"
           if [ "$OP" = "destroy" ]; then
-            terraform destroy $VARFILE -auto-approve
+            terraform destroy $VARFILE -auto-approve -no-color | tee terraform-destroy.log
           else
-            terraform apply $VARFILE -auto-approve
+            terraform apply $VARFILE -auto-approve -no-color | tee terraform-apply.log
           fi
 
       - name: Get ACR and Web App outputs from Terraform
