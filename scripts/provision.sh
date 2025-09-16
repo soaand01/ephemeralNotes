@@ -16,7 +16,7 @@ if [ -z "${RESOURCE_GROUP:-}" ]; then
   exit 1
 fi
 
-LOCATION=${LOCATION:-eastus}
+LOCATION=${LOCATION:-westeurope}
 if [ -z "${ACR_NAME:-}" ]; then
   echo "ACR_NAME must be set" >&2
   exit 1
