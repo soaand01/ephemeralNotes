@@ -1,9 +1,5 @@
 # Ephemeral Notes ✨📝
 
-A tiny, privacy-first notes app for local development — notes expire automatically and can be password-protected. This README explains how to run the app locally for development and testing.
-
-# Ephemeral Notes ✨📝
-
 A small, privacy-minded ephemeral notes app for local development and testing. Notes are stored in Redis with a TTL and can be optionally password protected and/or set to burn after reading.
 
 ---
