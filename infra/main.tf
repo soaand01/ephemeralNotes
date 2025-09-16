@@ -15,31 +15,41 @@ provider "azurerm" {
   features = {}
 }
 
+locals {
+  prefix       = lower("${var.project}-${var.env}")
+  suffix       = var.naming_suffix != "" ? "-${var.naming_suffix}" : ""
+  resource_rg  = "rg-${local.prefix}-${local.suffix}"
+  acr_name     = lower(replace("${var.project}${local.suffix}acr", "_", ""))
+  redis_name   = lower("${local.prefix}-redis${local.suffix}")
+  app_plan     = lower("${local.prefix}-plan${local.suffix}")
+  webapp_name  = lower("${local.prefix}${local.suffix}")
+}
+
 resource "azurerm_resource_group" "rg" {
-  name     = var.resource_group
+  name     = local.resource_rg
   location = var.location
 }
 
 resource "azurerm_container_registry" "acr" {
-  name                = var.acr_name
+  name                = local.acr_name
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
-  sku                 = "Standard"
+  sku                 = var.acr_sku
   admin_enabled       = false
 }
 
 resource "azurerm_redis_cache" "redis" {
-  name                = var.redis_name
+  name                = local.redis_name
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
-  sku_name            = "Basic"
+  sku_name            = var.redis_sku
   capacity            = 0
   family              = "C"
   minimum_tls_version = "1.2"
 }
 
 resource "azurerm_app_service_plan" "plan" {
-  name                = var.app_plan
+  name                = local.app_plan
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   kind                = "Linux"
@@ -47,12 +57,12 @@ resource "azurerm_app_service_plan" "plan" {
 
   sku {
     tier = "Standard"
-    size = "S1"
+    size = var.app_service_sku
   }
 }
 
 resource "azurerm_app_service" "webapp" {
-  name                = var.webapp_name
+  name                = local.webapp_name
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   app_service_plan_id = azurerm_app_service_plan.plan.id
