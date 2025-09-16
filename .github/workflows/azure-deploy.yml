@@ -94,18 +94,19 @@ jobs:
           RESOURCE_GROUP="${prefix}-rg${suffix}"
           LOCATION="$location"
           echo "Ensuring resource group: $RESOURCE_GROUP in $LOCATION"
-          az group create --name "$RESOURCE_GROUP" --location "$LOCATION"
+          echo "Current subscription:"; az account show || true
+          az group create --name "$RESOURCE_GROUP" --location "$LOCATION" --subscription "$ARM_SUBSCRIPTION_ID"
 
           # Use deterministic storage account name for backend
           SA_NAME="saephemeralnotestf"
           SA_NAME=$(echo "$SA_NAME" | tr '[:upper:]' '[:lower:]')
           echo "Ensuring storage account $SA_NAME exists in $RESOURCE_GROUP"
-          az storage account show -n "$SA_NAME" -g "$RESOURCE_GROUP" >/dev/null 2>&1 || \
-            az storage account create --name "$SA_NAME" --resource-group "$RESOURCE_GROUP" --location "$LOCATION" --sku Standard_LRS --kind StorageV2 --access-tier Hot
+          az storage account show -n "$SA_NAME" -g "$RESOURCE_GROUP" --subscription "$ARM_SUBSCRIPTION_ID" >/dev/null 2>&1 || \
+            az storage account create --name "$SA_NAME" --resource-group "$RESOURCE_GROUP" --location "$LOCATION" --sku Standard_LRS --kind StorageV2 --access-tier Hot --subscription "$ARM_SUBSCRIPTION_ID"
 
-          KEY=$(az storage account keys list -n "$SA_NAME" -g "$RESOURCE_GROUP" --query '[0].value' -o tsv)
+          KEY=$(az storage account keys list -n "$SA_NAME" -g "$RESOURCE_GROUP" --subscription "$ARM_SUBSCRIPTION_ID" --query '[0].value' -o tsv)
           CONTAINER_NAME="tfstate"
-          az storage container create --name "$CONTAINER_NAME" --account-name "$SA_NAME" --account-key "$KEY" || true
+          az storage container create --name "$CONTAINER_NAME" --account-name "$SA_NAME" --account-key "$KEY" --subscription "$ARM_SUBSCRIPTION_ID" || true
 
           echo "STORAGE_ACCOUNT=$SA_NAME" >> $GITHUB_ENV
           echo "STORAGE_CONTAINER=$CONTAINER_NAME" >> $GITHUB_ENV
