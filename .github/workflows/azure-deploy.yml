@@ -1,7 +1,16 @@
 name: Azure Provision & Deploy
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Terraform operation to run'
+        required: false
+        default: 'apply'
+        type: choice
+        options:
+          - apply
+          - destroy
 
 jobs:
   provision-and-deploy:
@@ -87,7 +96,7 @@ jobs:
             -backend-config="container_name=$STORAGE_CONTAINER" \
             -backend-config="key=$TFSTATE_KEY"
 
-      - name: Terraform Apply
+      - name: Terraform Apply/Destroy
         working-directory: infra
         run: |
           # If a tfvars file exists in infra/, use it. Otherwise, rely on variable defaults.
@@ -96,7 +105,13 @@ jobs:
             VARFILE="-var-file=infra/terraform.tfvars"
             echo "Using var file: infra/terraform.tfvars"
           fi
-          terraform apply $VARFILE -auto-approve
+          OP="${{ github.event.inputs.operation || 'apply' }}"
+          echo "Operation: $OP"
+          if [ "$OP" = "destroy" ]; then
+            terraform destroy $VARFILE -auto-approve
+          else
+            terraform apply $VARFILE -auto-approve
+          fi
 
       - name: Get ACR and Web App outputs from Terraform
         id: acr
@@ -107,6 +122,7 @@ jobs:
           echo "webapp-name=$(terraform output -raw webapp_name)" >> $GITHUB_OUTPUT
 
       - name: Login to ACR and push image
+        if: "${{ github.event.inputs.operation == 'apply' }}"
         run: |
           ACR_NAME=${{ steps.acr.outputs.acr-name }}
           ACR_LOGIN_SERVER=${{ steps.acr.outputs.login-server }}
@@ -117,6 +133,7 @@ jobs:
           docker push "$IMAGE"
 
       - name: Configure Web App to use container image
+        if: "${{ github.event.inputs.operation == 'apply' }}"
         run: |
           ACR_LOGIN_SERVER=${{ steps.acr.outputs.login-server }}
           WEBAPP_NAME=${{ steps.acr.outputs.webapp-name }}
