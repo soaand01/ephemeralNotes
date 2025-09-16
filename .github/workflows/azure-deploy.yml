@@ -69,11 +69,16 @@ jobs:
         run: |
           az extension add --name webapp || true
 
-      - name: Set Terraform backend variables
+      - name: Export Terraform backend variables
         run: |
           echo "RESOURCE_GROUP=rg-ephemeralnotes" >> $GITHUB_ENV
           echo "STORAGE_ACCOUNT=saephemeralnotestf" >> $GITHUB_ENV
           echo "TFSTATE_KEY=ephemeralnotes.tfstate" >> $GITHUB_ENV
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: '1.5.7'
 
       - name: Terraform Init
         working-directory: infra
