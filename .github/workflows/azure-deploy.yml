@@ -15,14 +15,18 @@ on:
 jobs:
   provision-and-deploy:
     runs-on: ubuntu-latest
-    env:
-      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set ARM secrets into environment
+        run: |
+          set -euo pipefail
+          echo "ARM_SUBSCRIPTION_ID=${{ secrets.AZURE_SUBSCRIPTION_ID }}" >> $GITHUB_ENV
+          echo "ARM_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}" >> $GITHUB_ENV
+          echo "ARM_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }}" >> $GITHUB_ENV
+          echo "ARM_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}" >> $GITHUB_ENV
+          echo "AZURE_CREDENTIALS=${{ secrets.AZURE_CREDENTIALS }}" >> $GITHUB_ENV
 
       - name: "Preflight: check required secrets"
         run: |
@@ -35,10 +39,31 @@ jobs:
           if [ -z "${ARM_TENANT_ID:-}" ]; then echo "Missing ARM_TENANT_ID"; missing=1; fi
           if [ $missing -ne 0 ]; then echo "One or more required secrets are missing. Please set them in repository secrets."; exit 1; fi
 
-      - name: Login to Azure (service principal credentials)
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Azure CLI login (service principal)
+        run: |
+          set -euo pipefail
+          az login --service-principal -u "$ARM_CLIENT_ID" -p "$ARM_CLIENT_SECRET" --tenant "$ARM_TENANT_ID"
+          az account set --subscription "$ARM_SUBSCRIPTION_ID"
+
+      - name: Verify Azure subscription access
+        run: |
+          set -euo pipefail
+          echo "Checking subscription access for $ARM_SUBSCRIPTION_ID"
+          acct=$(az account show --query id -o tsv || true)
+          echo "az account show -> $acct"
+          if [ -z "$acct" ]; then
+            echo "No account is currently selected. Call 'az login' or ensure the service principal has access."
+            az account list --output table || true
+            exit 2
+          fi
+          if [ "${acct,,}" != "${ARM_SUBSCRIPTION_ID,,}" ]; then
+            echo "Logged-in account subscription ($acct) does not match requested subscription ($ARM_SUBSCRIPTION_ID)."
+            echo "Full account info:"
+            az account show || true
+            echo "Listing subscriptions visible to the principal:" 
+            az account list --output table || true
+            exit 3
+          fi
 
       
 
