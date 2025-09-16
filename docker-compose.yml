@@ -1,0 +1,2 @@
+# Docker Compose removed. This repository is configured for local development using a Python virtualenv and a local Redis server.
+# If you need Docker again later, we can recreate a docker-compose.yml.

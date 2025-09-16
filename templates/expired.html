@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card border-danger shadow-sm">
+      <div class="card-body">
+        <h3 class="h5 text-danger">This note has expired</h3>
+        <p class="mb-0">The note you are trying to view has been deleted or has expired. If you created this note, create a new one below.</p>
+        <div class="mt-3">
+          <a class="btn btn-primary" href="{{ url_for('index') }}">Create new note</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

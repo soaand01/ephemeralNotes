@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h1 class="h4 mb-3">Privacy Policy</h1>
+
+    <p class="text-muted">This Privacy Policy explains how Ephemeral Notes ("the Application") collects, uses, and stores information. By using the Application you agree to the practices described here.</p>
+
+    <h2 class="h6 mt-3">Data Collected</h2>
+    <ul>
+      <li><strong>Note content:</strong> When you create a note, its content is stored temporarily in Redis with an expiration (TTL). The Application may optionally store a hashed password for password-protected notes (passwords are not stored in plaintext).</li>
+      <li><strong>Metadata:</strong> The Application maintains lightweight creation metadata (creation timestamp, token identifier, TTL, and flags like markdown/burn-after-read) for display in the Recent Notes list and counts. This metadata does not include note content.</li>
+      <li><strong>Logs:</strong> Standard server logs (access logs, error logs) may record request metadata such as timestamps and IP addresses depending on your deployment. The example development server does not persist advanced analytics by default.</li>
+    </ul>
+
+    <h2 class="h6 mt-3">How Data Is Used</h2>
+    <p class="text-muted">Note content is stored solely to enable the application to deliver the note to an authorized viewer before it expires. Metadata is used to display recent notes and total counts in the admin UI. Passwords are used only to gate access and are not used for any other purpose.</p>
+
+    <h2 class="h6 mt-3">Retention and Deletion</h2>
+    <p class="text-muted">Notes are retained only until their configured TTL expires or until they are deleted by a burn-after-read event. Creation metadata is retained in Redis for a limited recent history (configurable in the application). If you self-host the application, retention is controlled by your Redis configuration and any additional backups you configure.</p>
+
+    <h2 class="h6 mt-3">Security</h2>
+    <p class="text-muted">The Application includes several safeguards to reduce risk, but no system is perfect. Recommended deployment practices:
+    </p>
+    <ul>
+      <li>Run the application behind HTTPS (TLS) to protect data in transit.</li>
+      <li>Use a properly configured Redis instance with network access controls and, if available, authentication and encryption at rest.</li>
+      <li>Limit access to the administration or debugging interfaces in production environments.</li>
+      <li>Consider client-side encryption if notes contain highly sensitive content; the Application does not provide end-to-end encryption by default.</li>
+    </ul>
+
+    <h2 class="h6 mt-3">Third-Party Services</h2>
+    <p class="text-muted">Ephemeral Notes uses Redis for temporary storage and may use other libraries (Flask, Markdown, Bleach) for functionality. These dependencies are local to your deployment when self-hosted and do not imply external data sharing by the application itself.</p>
+
+    <h2 class="h6 mt-3">Contact and Author</h2>
+    <p class="text-muted mb-0">If you have privacy questions or concerns, contact the author:</p>
+    <p class="text-muted"><strong>Anderson Lopes</strong> &lt;andlopes@microsoft.com&gt;</p>
+
+    <div class="mt-3 small text-muted">
+      <p class="mb-0">This privacy policy is provided for the reference of operators and users of the sample application. If you deploy or modify the application, please ensure your own privacy and legal requirements are satisfied.</p>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

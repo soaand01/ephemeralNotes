@@ -1,0 +1,72 @@
+/* Light theme variables and typography */
+:root{
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --muted: #6b7280;
+  --muted-2: #9ca3af;
+  --primary: #1e3a8a; /* deep indigo */
+  --accent: #1e90ff;
+  --text: #0f1724;
+  --subtext: #374151;
+}
+body{
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+.container{max-width:1100px}
+
+.navbar-brand img{filter:none; border-radius:6px}
+
+.card{background: var(--surface); border: 1px solid rgba(15,23,36,0.04); border-radius:12px}
+.card .card-body{padding:1.2rem}
+
+h1,h2,h3,h4{color:#0b1220; /* stronger dark heading for contrast */}
+
+.form-control{background:#fff; color:var(--text); border:1px solid rgba(15,23,36,0.08)}
+.form-control::placeholder{color:rgba(55,65,81,0.45)}
+.form-text, label {color:var(--muted)}
+
+.form-control:focus{box-shadow: 0 0 0 0.12rem rgba(30,58,138,0.08); border-color: var(--primary)}
+
+.btn-primary{background: linear-gradient(180deg,#0f1724,var(--primary)); border:none; color:#fff}
+.btn-primary:hover{filter:brightness(0.95)}
+.btn-dark, .btn-primary-dark{background:#0b1220; color:#fff; border:none}
+.btn-dark:hover, .btn-primary-dark:hover{filter:brightness(0.95)}
+.btn-outline-secondary{border-color:rgba(15,23,36,0.06); color:var(--muted)}
+
+.stat-number{font-size:2rem; font-weight:700; color:var(--primary)}
+.stat-muted{color:var(--muted)}
+
+.table thead th{border-bottom:1px solid rgba(15,23,36,0.06); color:#0b1220; font-weight:700}
+.table tbody td{vertical-align:middle; color:var(--subtext)}
+.table{background:transparent}
+
+/* Compact table for recent notes */
+.recent-table { font-size:0.85rem; }
+.recent-table thead th, .recent-table tbody td { padding:0.45rem 0.6rem; }
+.recent-table .font-monospace { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Courier New', monospace; font-size:0.86rem; }
+.recent-table .token-cell { max-width:9.2rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.recent-table .small-muted { font-size:0.78rem; color:var(--muted-2); }
+.recent-table td.text-nowrap { white-space:nowrap; }
+
+/* Navbar darker background while keeping page light */
+.navbar{background: linear-gradient(90deg,#0b1220,#071025);}
+.navbar, .navbar .nav-link, .navbar .navbar-brand, .navbar .navbar-text{color:#fff}
+.navbar .nav-link:hover{color:var(--accent)}
+
+/* Ensure links and important text use primary color when appropriate */
+a, .link-primary{color:var(--primary)}
+
+.text-muted-small{color:var(--muted); font-size:0.95rem}
+
+/* Form helper compact styles */
+.form-helpers .form-text{font-size:0.9rem}
+.form-helpers .small{font-size:0.85rem}
+.card .form-text.small{color:var(--muted-2)}
+.form-check .form-check-label{font-weight:500}
+
+@media (max-width:768px){.container{padding:0 1rem}}
+
+#shareUrl{word-break:break-all}

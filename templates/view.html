@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-9">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        {% if need_password %}
+          <h3 class="h6">This note is password protected</h3>
+          {% if error %}
+          <div class="alert alert-danger">{{ error }}</div>
+          {% endif %}
+          <form method="post" action="{{ url_for('unlock_note', token=token) }}">
+            <div class="mb-3">
+              <label for="password" class="form-label">Password</label>
+              <input id="password" name="password" type="password" class="form-control" required />
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-primary" type="submit">Unlock</button>
+              <a class="btn btn-link" href="{{ url_for('index') }}">Create your own note</a>
+            </div>
+          </form>
+        {% elif not note %}
+          <!-- Shouldn't reach here; handled in view route -->
+          <div class="alert alert-warning">Note not available.</div>
+        {% else %}
+          <div class="mb-2 d-flex justify-content-between align-items-center">
+            <div>
+              {% if note.markdown %}
+                <span class="badge bg-info">Markdown</span>
+              {% endif %}
+            </div>
+            <div class="text-end">
+              {% if remaining_seconds is defined and remaining_seconds > 0 %}
+                <small class="text-muted">Expires in <span id="countdown">{{ remaining_seconds }}</span>s</small>
+              {% endif %}
+            </div>
+          </div>
+          {% if note.markdown %}
+            <div class="mb-2 d-flex justify-content-between align-items-center">
+              <div>
+              </div>
+              <div>
+                <button class="btn btn-sm btn-outline-secondary" id="toggleRawBtn" data-token="{{ token }}">View raw</button>
+              </div>
+            </div>
+            <div id="rendered" class="border p-3 rounded bg-white">
+              {{ note.content | safe }}
+            </div>
+            <pre id="raw" class="border p-3 rounded bg-light" style="display:none; white-space: pre-wrap;">{{ note.content }}</pre>
+          {% else %}
+            <div class="border p-3 rounded bg-white" style="white-space: pre-wrap;">{{ note.content }}</div>
+          {% endif %}
+
+          <div class="mt-3 d-flex gap-2">
+            <form method="post" action="{{ url_for('delete_note_handler', token=token) }}">
+              <button class="btn btn-outline-danger btn-sm" type="submit">Delete now</button>
+            </form>
+            <a class="btn btn-sm btn-link" href="{{ url_for('index') }}">Create new</a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+// Countdown timer for remaining seconds (decrements every 1s)
+document.addEventListener('DOMContentLoaded', function(){
+  var el = document.getElementById('countdown');
+  if(!el) return;
+  var remaining = parseInt(el.innerText,10) || 0;
+  function tick(){
+    if(remaining <= 0){ el.innerText = '0'; return; }
+    remaining = remaining - 1;
+    el.innerText = remaining;
+  }
+  setInterval(tick, 1000);
+});
+</script>
+{% endblock %}

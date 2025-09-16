@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h2 class="h5">Share your note</h2>
+        <p class="text-muted">Anyone with this link can view the note for the selected time.</p>
+
+        <div class="input-group mb-3">
+          <!-- Do not set the input value directly to avoid accidental prefetch by browsers or extensions -->
+          <input id="shareUrl" class="form-control" value="" readonly aria-label="Shareable link" data-share="{{ share_url }}" placeholder="Click 'Copy link' to reveal the URL" />
+          <button id="copyBtn" class="btn btn-outline-primary" type="button">Copy link</button>
+          <button id="openBtn" class="btn btn-outline-secondary" type="button">Open</button>
+        </div>
+
+        <p class="small text-muted">URL expires in <strong>{{ ttl }} seconds</strong>.</p>
+
+        <div class="mt-3">
+          <a class="btn btn-sm btn-secondary me-2" href="{{ url_for('index') }}">Create another</a>
+          <a class="btn btn-sm btn-outline-primary me-2" href="{{ url_for('index') }}">Home</a>
+          <form method="post" action="{{ url_for('delete_note_handler', token=token) }}" style="display:inline">
+            <button class="btn btn-sm btn-danger" type="submit">Delete now</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

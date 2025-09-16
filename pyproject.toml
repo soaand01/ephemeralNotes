@@ -1,0 +1,13 @@
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 88
+select = ["E", "F", "W", "C", "B"]
+exclude = ["tests/**"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-q --disable-warnings"
+testpaths = ["tests"]
