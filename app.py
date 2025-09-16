@@ -29,6 +29,7 @@ from flask import (
     request,
     session,
     url_for,
+    flash,
 )
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -40,6 +41,9 @@ from dotenv import load_dotenv
 import os
 import markdown as md
 import bleach
+import redis
+from azure.identity import DefaultAzureCredential
+from redis_entraid.cred_provider import create_from_default_azure_credential
 
 # Load .env if present
 load_dotenv()
@@ -59,13 +63,13 @@ CLIENT_SIDE_ENCRYPTION = False
 # Configuration from env
 # ---------------------------
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production")
-REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
+REDIS_URL = os.getenv("REDIS_URL", "")
 DEFAULT_TTL_SECONDS = int(os.getenv("DEFAULT_TTL_SECONDS", "900"))
 MAX_CONTENT_CHARS = 20000  # 20k chars ~ safe
 MAX_CONTENT_BYTES = 20 * 1024  # 20KB limit for entire request payload
 RATE_LIMIT_CREATE = os.getenv("RATE_LIMIT_CREATE", "10 per minute")
 RATE_LIMIT_VIEW = os.getenv("RATE_LIMIT_VIEW", "60 per minute")
-EXTERNAL_HOST = os.getenv("EXTERNAL_HOST", "http://localhost:8080")
+EXTERNAL_HOST = os.getenv("EXTERNAL_HOST", "http://localhost:5000")
 PASSWORD_POLICY_MINLEN = int(os.getenv("PASSWORD_POLICY_MINLEN", "6"))
 PORT = int(os.getenv("PORT", os.getenv("WEBSITES_PORT", "8080")))
 
@@ -80,6 +84,14 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
     MAX_CONTENT_LENGTH=MAX_CONTENT_BYTES,
 )
+
+# Register any extra, small routes from a helper module
+try:
+    from extra_routes import register as _register_extra_routes
+    _register_extra_routes(app)
+except Exception as e:
+    # non-fatal: continue if extra routes fail to import, but print for debugging
+    print('Failed to import/register extra_routes:', e)
 
 # Security: CSP and Talisman
 CSP = {
@@ -108,12 +120,20 @@ talisman = Talisman(
 )
 
 # Redis client creation (wrapped for testability)
-def create_redis_client(url: str = REDIS_URL) -> Redis:
-    client = redis_from_url(url, decode_responses=True)
+def create_redis_client() -> Redis:
+    # Use Access Keys for authentication with password from environment variable
+    client = redis.Redis(
+        host="ephemeralnotes.redis.cache.windows.net",
+        port=6380,
+        username="default",
+        password=os.getenv("REDIS_PASSWORD"),
+        ssl=True,
+        decode_responses=True,
+    )
     return client
 
 
-redis_client: Redis = create_redis_client(REDIS_URL)
+redis_client: Redis = create_redis_client()
 app.redis_client = redis_client  # expose for tests
 
 # Rate limiter using Redis storage (uses same redis URL)
@@ -550,6 +570,17 @@ def privacy():
 @app.errorhandler(413)
 def request_entity_too_large(error):
     return "Payload too large", 413
+
+
+# Update the base template to include a link to the Test Redis page
+@app.context_processor
+def inject_nav_links():
+    return {
+        'nav_links': [
+            {'name': 'Home', 'url': url_for('index')},
+            {'name': 'Dashboard', 'url': url_for('dashboard')},
+        ]
+    }
 
 
 # Run guard (for local dev)
