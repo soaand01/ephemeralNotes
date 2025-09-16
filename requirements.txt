@@ -10,3 +10,5 @@ pytest>=7.4.0
 fakeredis>=2.20.0
 black==24.3.0
 ruff==0.13.0
+azure-identity
+redis_entraid
