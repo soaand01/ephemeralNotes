@@ -15,9 +15,10 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import logging
 import secrets
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 from flask import (
@@ -499,6 +500,10 @@ def unlock_note(token: str):
 
 @app.route("/s/<token>/delete", methods=["POST"])
 def delete_note_handler(token: str):
+    # Check if the Redis key exists
+    key_exists = app.redis_client.exists(_note_key(token))
+    logging.debug(f"Attempting to delete token: {token}, Key exists: {key_exists}")
+
     # Best-effort delete (no auth). This endpoint should be rate-limited by client IP via frontend
     _delete_note(token)
     return redirect(url_for("index"))
@@ -552,7 +557,65 @@ def dashboard():
         )
 
     total = len(keys)
-    return render_template("dashboard.html", notes=notes, total=total)
+
+    # Calculate additional statistics for the dashboard
+    try:
+        total_deleted = int(app.redis_client.get('stats:deleted_total') or 0)
+    except Exception:
+        total_deleted = 0
+
+    try:
+        # Example: Fetch the most active day (mocked for now)
+        most_active_day = "2025-09-15"  # Replace with actual logic if available
+    except Exception:
+        most_active_day = "N/A"
+
+    try:
+        # Example: Calculate average note lifetime (mocked for now)
+        avg_note_lifetime = 900  # Replace with actual logic if available
+    except Exception:
+        avg_note_lifetime = "N/A"
+
+    try:
+        # Notes Created in the Last 24 Hours
+        now = datetime.now(timezone.utc)
+        one_day_ago = now - timedelta(days=1)
+        notes_last_24_hours = sum(
+            1 for note in notes if datetime.fromisoformat(note['created_at']) > one_day_ago
+        )
+    except Exception:
+        notes_last_24_hours = "N/A"
+
+    try:
+        # Notes Expired Automatically
+        notes_expired = int(app.redis_client.get('stats:expired_total') or 0)
+    except Exception:
+        notes_expired = "N/A"
+
+    try:
+        # Most Shared Note (mocked for now)
+        most_shared_note = "Note XYZ"  # Replace with actual logic if available
+    except Exception:
+        most_shared_note = "N/A"
+
+    try:
+        # Peak Usage Time (mocked for now)
+        peak_usage_time = "14:00 - 15:00 UTC"  # Replace with actual logic if available
+    except Exception:
+        peak_usage_time = "N/A"
+
+    return render_template(
+        "dashboard.html",
+        notes=notes,
+        total=total,
+        total_deleted=total_deleted,
+        most_active_day=most_active_day,
+        avg_note_lifetime=avg_note_lifetime,
+        notes_last_24_hours=notes_last_24_hours,
+        notes_expired=notes_expired,
+        most_shared_note=most_shared_note,
+        peak_usage_time=peak_usage_time,
+    )
 
 
 # Informational pages

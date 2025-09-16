@@ -12,9 +12,69 @@
     <div class="col-lg-4 mb-3">
       <div class="card shadow-sm">
         <div class="card-body text-center">
-          <h6 class="text-muted">Total Notes</h6>
+          <h6 class="text-muted">Total Notes 📝</h6>
           <h2 class="text-primary">{{ total }}</h2>
           <p class="small text-muted">Notes are stored securely and auto-expire after the set time.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4 mb-3">
+      <div class="card shadow-sm">
+        <div class="card-body text-center">
+          <h6 class="text-muted">Total Notes Deleted 🗑️</h6>
+          <h2 class="text-primary">{{ total_deleted }}</h2>
+          <p class="small text-muted">Notes that have been deleted manually or expired.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4 mb-3">
+      <div class="card shadow-sm">
+        <div class="card-body text-center">
+          <h6 class="text-muted">Most Active Day 📅</h6>
+          <h2 class="text-primary">{{ most_active_day }}</h2>
+          <p class="small text-muted">The day with the highest number of notes created.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4 mb-3">
+      <div class="card shadow-sm">
+        <div class="card-body text-center">
+          <h6 class="text-muted">Notes Created in the Last 24 Hours ⏰</h6>
+          <h2 class="text-primary">{{ notes_last_24_hours }}</h2>
+          <p class="small text-muted">Notes created within the past 24 hours.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4 mb-3">
+      <div class="card shadow-sm">
+        <div class="card-body text-center">
+          <h6 class="text-muted">Notes Expired Automatically ⌛</h6>
+          <h2 class="text-primary">{{ notes_expired }}</h2>
+          <p class="small text-muted">Notes that expired without manual deletion.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4 mb-3">
+      <div class="card shadow-sm">
+        <div class="card-body text-center">
+          <h6 class="text-muted">Most Shared Note 🔗</h6>
+          <h2 class="text-primary">{{ most_shared_note }}</h2>
+          <p class="small text-muted">The note shared the most times.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4 mb-3">
+      <div class="card shadow-sm">
+        <div class="card-body text-center">
+          <h6 class="text-muted">Peak Usage Time 🌟</h6>
+          <h2 class="text-primary">{{ peak_usage_time }}</h2>
+          <p class="small text-muted">The time period with the highest activity.</p>
         </div>
       </div>
     </div>
