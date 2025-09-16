@@ -1,21 +1,7 @@
 name: Azure Provision & Deploy
 
 on:
-  workflow_dispatch:
-    inputs:
-      resource_group:
-        description: 'Azure resource group'
-        required: true
-      location:
-        description: 'Azure region'
-        required: false
-        default: 'westeurope'
-      acr_name:
-        description: 'ACR name (short)'
-        required: true
-      webapp_name:
-        description: 'Web App name'
-        required: true
+  workflow_dispatch: {}
 
 jobs:
   provision-and-deploy:
@@ -38,19 +24,28 @@ jobs:
         run: |
           az extension add --name webapp || true
 
-      - name: Set variables
-        run: |
-          echo "RESOURCE_GROUP=${{ github.event.inputs.resource_group }}" >> $GITHUB_ENV
-          echo "LOCATION=${{ github.event.inputs.location }}" >> $GITHUB_ENV
-          echo "ACR_NAME=${{ github.event.inputs.acr_name }}" >> $GITHUB_ENV
-          echo "WEBAPP_NAME=${{ github.event.inputs.webapp_name }}" >> $GITHUB_ENV
-
       - name: Prepare Terraform backend (create storage account + container)
         id: tf-backend
         run: |
           set -euo pipefail
-          RESOURCE_GROUP=${{ github.event.inputs.resource_group }}
-          LOCATION=${{ github.event.inputs.location }}
+          # Read optional tfvars if present to compute resource names (project, env, naming_suffix, location)
+          project="ephemeralnotes"
+          env="prod"
+          naming_suffix=""
+          location="westeurope"
+          if [ -f infra/terraform.tfvars ]; then
+            # crude parser for key = "value" lines
+            project=$(grep '^project\s*=' infra/terraform.tfvars | sed -E 's/.*=\s*"([^"]+)".*/\1/' || echo "$project")
+            env=$(grep '^env\s*=' infra/terraform.tfvars | sed -E 's/.*=\s*"([^"]+)".*/\1/' || echo "$env")
+            naming_suffix=$(grep '^naming_suffix\s*=' infra/terraform.tfvars | sed -E 's/.*=\s*"([^"]*)".*/\1/' || echo "$naming_suffix")
+            location=$(grep '^location\s*=' infra/terraform.tfvars | sed -E 's/.*=\s*"([^"]+)".*/\1/' || echo "$location")
+          fi
+
+          prefix=$(echo "${project}-${env}" | tr '[:upper:]' '[:lower:]')
+          suffix=""
+          if [ -n "$naming_suffix" ]; then suffix="-$naming_suffix"; fi
+          RESOURCE_GROUP="${prefix}-rg${suffix}"
+          LOCATION="$location"
           echo "Ensuring resource group: $RESOURCE_GROUP in $LOCATION"
           az group create --name "$RESOURCE_GROUP" --location "$LOCATION"
 
@@ -67,7 +62,11 @@ jobs:
 
           echo "STORAGE_ACCOUNT=$SA_NAME" >> $GITHUB_ENV
           echo "STORAGE_CONTAINER=$CONTAINER_NAME" >> $GITHUB_ENV
-          echo "TFSTATE_KEY=${{ github.event.inputs.webapp_name }}.tfstate" >> $GITHUB_ENV
+          # TFSTATE key: use computed webapp name
+          WEBAPP_NAME="${prefix}${suffix}"
+          echo "TFSTATE_KEY=${WEBAPP_NAME}.tfstate" >> $GITHUB_ENV
+          echo "RESOURCE_GROUP=$RESOURCE_GROUP" >> $GITHUB_ENV
+          echo "LOCATION=$LOCATION" >> $GITHUB_ENV
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
@@ -80,9 +79,10 @@ jobs:
           STORAGE_ACCOUNT: ${{ env.STORAGE_ACCOUNT }}
           STORAGE_CONTAINER: ${{ env.STORAGE_CONTAINER }}
           TFSTATE_KEY: ${{ env.TFSTATE_KEY }}
+          RESOURCE_GROUP: ${{ env.RESOURCE_GROUP }}
         run: |
           terraform init -backend=true \
-            -backend-config="resource_group_name=${{ github.event.inputs.resource_group }}" \
+            -backend-config="resource_group_name=$RESOURCE_GROUP" \
             -backend-config="storage_account_name=$STORAGE_ACCOUNT" \
             -backend-config="container_name=$STORAGE_CONTAINER" \
             -backend-config="key=$TFSTATE_KEY"
@@ -90,30 +90,35 @@ jobs:
       - name: Terraform Apply
         working-directory: infra
         run: |
-          terraform apply -auto-approve \
-            -var="resource_group=${{ github.event.inputs.resource_group }}" \
-            -var="location=${{ github.event.inputs.location }}" \
-            -var="acr_name=${{ github.event.inputs.acr_name }}" \
-            -var="webapp_name=${{ github.event.inputs.webapp_name }}"
+          # If a tfvars file exists in infra/, use it. Otherwise, rely on variable defaults.
+          VARFILE=""
+          if [ -f infra/terraform.tfvars ]; then
+            VARFILE="-var-file=infra/terraform.tfvars"
+            echo "Using var file: infra/terraform.tfvars"
+          fi
+          terraform apply $VARFILE -auto-approve
 
-      - name: Get ACR login server from Terraform outputs
+      - name: Get ACR and Web App outputs from Terraform
         id: acr
         working-directory: infra
         run: |
           echo "login-server=$(terraform output -raw acr_login_server)" >> $GITHUB_OUTPUT
+          echo "acr-name=$(terraform output -raw acr_name)" >> $GITHUB_OUTPUT
+          echo "webapp-name=$(terraform output -raw webapp_name)" >> $GITHUB_OUTPUT
 
       - name: Login to ACR and push image
         run: |
-          ACR_NAME=${{ github.event.inputs.acr_name }}
+          ACR_NAME=${{ steps.acr.outputs.acr-name }}
           ACR_LOGIN_SERVER=${{ steps.acr.outputs.login-server }}
           echo "Logging in to ACR: $ACR_NAME"
           az acr login --name "$ACR_NAME"
-          IMAGE="$ACR_LOGIN_SERVER/ephemeralnotes:latest"
+          IMAGE="$ACR_LOGIN_SERVER/${{ env.IMAGE_NAME:-ephemeralnotes }}:latest"
           docker build -t "$IMAGE" .
           docker push "$IMAGE"
 
       - name: Configure Web App to use container image
         run: |
           ACR_LOGIN_SERVER=${{ steps.acr.outputs.login-server }}
-          IMAGE="$ACR_LOGIN_SERVER/ephemeralnotes:latest"
-          az webapp config container set --name ${{ github.event.inputs.webapp_name }} --resource-group ${{ github.event.inputs.resource_group }} --docker-custom-image-name "$IMAGE"
+          WEBAPP_NAME=${{ steps.acr.outputs.webapp-name }}
+          IMAGE="$ACR_LOGIN_SERVER/${{ env.IMAGE_NAME:-ephemeralnotes }}:latest"
+          az webapp config container set --name "$WEBAPP_NAME" --resource-group "$RESOURCE_GROUP" --docker-custom-image-name "$IMAGE"
