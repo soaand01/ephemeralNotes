@@ -56,11 +56,11 @@ resource "azurerm_service_plan" "plan" {
   sku_name            = var.app_service_sku
 }
 
-resource "azurerm_app_service" "webapp" {
+resource "azurerm_linux_web_app" "webapp" {
   name                = local.webapp_name
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
-  app_service_plan_id = azurerm_service_plan.plan.id
+  service_plan_id     = azurerm_service_plan.plan.id
 
   identity {
     type = "SystemAssigned"
@@ -75,7 +75,7 @@ resource "azurerm_app_service" "webapp" {
 resource "azurerm_role_assignment" "acr_pull" {
   scope                = azurerm_container_registry.acr.id
   role_definition_name = "AcrPull"
-  principal_id         = azurerm_app_service.webapp.identity[0].principal_id
+  principal_id         = azurerm_linux_web_app.webapp.identity[0].principal_id
 }
 
 resource "azurerm_storage_account" "tf_backend" {
