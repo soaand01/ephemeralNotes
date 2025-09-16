@@ -40,32 +40,84 @@ jobs:
           echo "ACR_NAME=${{ github.event.inputs.acr_name }}" >> $GITHUB_ENV
           echo "WEBAPP_NAME=${{ github.event.inputs.webapp_name }}" >> $GITHUB_ENV
 
-      - name: Run provision script
-        env:
-          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          RESOURCE_GROUP: ${{ github.event.inputs.resource_group }}
-          LOCATION: ${{ github.event.inputs.location }}
-          ACR_NAME: ${{ github.event.inputs.acr_name }}
-          WEBAPP_NAME: ${{ github.event.inputs.webapp_name }}
+      - name: Prepare Terraform backend (create storage account + container)
+        id: tf-backend
         run: |
-          bash scripts/provision.sh
+          set -euo pipefail
+          RESOURCE_GROUP=${{ github.event.inputs.resource_group }}
+          LOCATION=${{ github.event.inputs.location }}
+          echo "Ensuring resource group: $RESOURCE_GROUP in $LOCATION"
+          az group create --name "$RESOURCE_GROUP" --location "$LOCATION"
 
-      - name: Build and push Docker image to ACR
-        uses: docker/build-push-action@v5
+          # Create a reasonably-unique storage account name (lowercase, 3-24 chars)
+          SUFFIX=$(printf "%06d" $(( ${GITHUB_RUN_ID:-0} % 1000000 )))
+          SA_NAME="sa${SUFFIX}"
+          SA_NAME=$(echo "$SA_NAME" | tr '[:upper:]' '[:lower:]')
+          echo "Creating storage account $SA_NAME"
+          az storage account create --name "$SA_NAME" --resource-group "$RESOURCE_GROUP" --location "$LOCATION" --sku Standard_LRS --kind StorageV2 --access-tier Hot
+
+          KEY=$(az storage account keys list -n "$SA_NAME" -g "$RESOURCE_GROUP" --query '[0].value' -o tsv)
+          CONTAINER_NAME="tfstate"
+          az storage container create --name "$CONTAINER_NAME" --account-name "$SA_NAME" --account-key "$KEY" || true
+
+          echo "STORAGE_ACCOUNT=$SA_NAME" >> $GITHUB_ENV
+          echo "STORAGE_CONTAINER=$CONTAINER_NAME" >> $GITHUB_ENV
+          echo "TFSTATE_KEY=${{ github.event.inputs.webapp_name }}.tfstate" >> $GITHUB_ENV
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
         with:
-          context: .
-          push: true
-          tags: ${{ steps.acr.outputs.login-server }}/ephemeralnotes:latest
-        env:
-          ACR_LOGIN_SERVER: ${{ steps.acr.outputs.login-server }}
+          terraform_version: '1.5.7'
 
-      - name: Get ACR login server
-        id: acr
+      - name: Terraform Init
+        working-directory: infra
+        env:
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          STORAGE_ACCOUNT: ${{ env.STORAGE_ACCOUNT }}
+          STORAGE_CONTAINER: ${{ env.STORAGE_CONTAINER }}
+          TFSTATE_KEY: ${{ env.TFSTATE_KEY }}
         run: |
-          echo "login-server=$(az acr show -n ${{ github.event.inputs.acr_name }} -g ${{ github.event.inputs.resource_group }} --query loginServer -o tsv)" >> $GITHUB_OUTPUT
+          terraform init -backend=true \
+            -backend-config="resource_group_name=${{ github.event.inputs.resource_group }}" \
+            -backend-config="storage_account_name=$STORAGE_ACCOUNT" \
+            -backend-config="container_name=$STORAGE_CONTAINER" \
+            -backend-config="key=$TFSTATE_KEY"
+
+      - name: Terraform Apply
+        working-directory: infra
+        env:
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        run: |
+          terraform apply -auto-approve \
+            -var="resource_group=${{ github.event.inputs.resource_group }}" \
+            -var="location=${{ github.event.inputs.location }}" \
+            -var="acr_name=${{ github.event.inputs.acr_name }}" \
+            -var="webapp_name=${{ github.event.inputs.webapp_name }}"
+
+      - name: Get ACR login server from Terraform outputs
+        id: acr
+        working-directory: infra
+        run: |
+          echo "login-server=$(terraform output -raw acr_login_server)" >> $GITHUB_OUTPUT
+
+      - name: Login to ACR and push image
+        run: |
+          ACR_NAME=${{ github.event.inputs.acr_name }}
+          ACR_LOGIN_SERVER=${{ steps.acr.outputs.login-server }}
+          echo "Logging in to ACR: $ACR_NAME"
+          az acr login --name "$ACR_NAME"
+          IMAGE="$ACR_LOGIN_SERVER/ephemeralnotes:latest"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
 
       - name: Configure Web App to use container image
         run: |
-          ACR_LOGIN_SERVER=$(az acr show -n ${{ github.event.inputs.acr_name }} -g ${{ github.event.inputs.resource_group }} --query loginServer -o tsv)
+          ACR_LOGIN_SERVER=${{ steps.acr.outputs.login-server }}
           IMAGE="$ACR_LOGIN_SERVER/ephemeralnotes:latest"
           az webapp config container set --name ${{ github.event.inputs.webapp_name }} --resource-group ${{ github.event.inputs.resource_group }} --docker-custom-image-name "$IMAGE"
