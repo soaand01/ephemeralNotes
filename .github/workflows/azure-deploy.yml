@@ -24,10 +24,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: "Preflight: check required secrets"
+        run: |
+          set -euo pipefail
+          missing=0
+          : "Checking ARM_* secrets"
+          if [ -z "${ARM_SUBSCRIPTION_ID:-}" ]; then echo "Missing ARM_SUBSCRIPTION_ID"; missing=1; fi
+          if [ -z "${ARM_CLIENT_ID:-}" ]; then echo "Missing ARM_CLIENT_ID"; missing=1; fi
+          if [ -z "${ARM_CLIENT_SECRET:-}" ]; then echo "Missing ARM_CLIENT_SECRET"; missing=1; fi
+          if [ -z "${ARM_TENANT_ID:-}" ]; then echo "Missing ARM_TENANT_ID"; missing=1; fi
+          if [ $missing -ne 0 ]; then echo "One or more required secrets are missing. Please set them in repository secrets."; exit 1; fi
+
       - name: Login to Azure (service principal credentials)
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      
 
       - name: Install Azure CLI extensions
         run: |
@@ -105,7 +118,8 @@ jobs:
             VARFILE="-var-file=infra/terraform.tfvars"
             echo "Using var file: infra/terraform.tfvars"
           fi
-          OP="${{ github.event.inputs.operation || 'apply' }}"
+          OP="${{ github.event.inputs.operation }}"
+          OP="${OP:-apply}"
           echo "Operation: $OP"
           if [ "$OP" = "destroy" ]; then
             terraform destroy $VARFILE -auto-approve
@@ -124,18 +138,31 @@ jobs:
       - name: Login to ACR and push image
         if: "${{ github.event.inputs.operation == 'apply' }}"
         run: |
+          set -euo pipefail
           ACR_NAME=${{ steps.acr.outputs.acr-name }}
           ACR_LOGIN_SERVER=${{ steps.acr.outputs.login-server }}
           echo "Logging in to ACR: $ACR_NAME"
           az acr login --name "$ACR_NAME"
-          IMAGE="$ACR_LOGIN_SERVER/${{ env.IMAGE_NAME:-ephemeralnotes }}:latest"
+          # Determine image name: prefer infra/terraform.tfvars value, otherwise default
+          IMAGE_NAME="ephemeralnotes"
+          if [ -f infra/terraform.tfvars ]; then
+            IMAGE_NAME=$(grep '^image_name\s*=' infra/terraform.tfvars | sed -E 's/.*=\s*"([^\"]+)".*/\1/' || echo "$IMAGE_NAME")
+          fi
+          IMAGE="$ACR_LOGIN_SERVER/${IMAGE_NAME}:latest"
+          echo "Building image $IMAGE"
           docker build -t "$IMAGE" .
           docker push "$IMAGE"
 
       - name: Configure Web App to use container image
         if: "${{ github.event.inputs.operation == 'apply' }}"
         run: |
+          set -euo pipefail
           ACR_LOGIN_SERVER=${{ steps.acr.outputs.login-server }}
           WEBAPP_NAME=${{ steps.acr.outputs.webapp-name }}
-          IMAGE="$ACR_LOGIN_SERVER/${{ env.IMAGE_NAME:-ephemeralnotes }}:latest"
+          IMAGE_NAME="ephemeralnotes"
+          if [ -f infra/terraform.tfvars ]; then
+            IMAGE_NAME=$(grep '^image_name\s*=' infra/terraform.tfvars | sed -E 's/.*=\s*"([^\"]+)".*/\1/' || echo "$IMAGE_NAME")
+          fi
+          IMAGE="$ACR_LOGIN_SERVER/${IMAGE_NAME}:latest"
+          echo "Setting Web App $WEBAPP_NAME to use image $IMAGE"
           az webapp config container set --name "$WEBAPP_NAME" --resource-group "$RESOURCE_GROUP" --docker-custom-image-name "$IMAGE"
