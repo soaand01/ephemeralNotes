@@ -24,13 +24,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Login to Azure
+      - name: Login to Azure (service principal credentials)
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Install Azure CLI extensions
         run: |
@@ -58,9 +55,14 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ env.ACR_LOGIN_SERVER }} /ephemeralnotes:latest
+          tags: ${{ steps.acr.outputs.login-server }}/ephemeralnotes:latest
         env:
-          ACR_LOGIN_SERVER: $(az acr show -n ${{ github.event.inputs.acr_name }} -g ${{ github.event.inputs.resource_group }} --query loginServer -o tsv)
+          ACR_LOGIN_SERVER: ${{ steps.acr.outputs.login-server }}
+
+      - name: Get ACR login server
+        id: acr
+        run: |
+          echo "login-server=$(az acr show -n ${{ github.event.inputs.acr_name }} -g ${{ github.event.inputs.resource_group }} --query loginServer -o tsv)" >> $GITHUB_OUTPUT
 
       - name: Configure Web App to use container image
         run: |
