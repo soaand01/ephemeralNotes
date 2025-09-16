@@ -12,7 +12,7 @@ Quick start (local)
 
 2. Create and activate a virtualenv, install deps:
    ```bash
-   cd /home/andlopes/labs/tempNotes
+   cd /home/andlopes/labs/ephemeralNotes
    python3 -m venv .venv
    source .venv/bin/activate
    pip install -r requirements.txt
