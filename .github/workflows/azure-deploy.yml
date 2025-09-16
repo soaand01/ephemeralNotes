@@ -115,9 +115,9 @@ jobs:
         id: acr
         working-directory: infra
         run: |
-          echo "login-server=$(terraform output -raw acr_login_server)" >> $GITHUB_OUTPUT
-          echo "acr-name=$(terraform output -raw acr_name)" >> $GITHUB_OUTPUT
-          echo "webapp-name=$(terraform output -raw webapp_name)" >> $GITHUB_OUTPUT
+          echo "login-server=$(terraform output -json | jq -r '.acr_login_server.value')" >> $GITHUB_OUTPUT
+          echo "acr-name=$(terraform output -json | jq -r '.acr_name.value')" >> $GITHUB_OUTPUT
+          echo "webapp-name=$(terraform output -json | jq -r '.webapp_name.value')" >> $GITHUB_OUTPUT
 
       - name: Login to ACR and push image
         if: "${{ github.event.inputs.operation == 'apply' }}"
