@@ -6,10 +6,6 @@ output "redis_host" {
   value = azurerm_redis_cache.redis.hostname
 }
 
-output "webapp_name" {
-  value = azurerm_app_service.webapp.name
-}
-
 output "resource_group" {
   value = azurerm_resource_group.rg.name
 }
