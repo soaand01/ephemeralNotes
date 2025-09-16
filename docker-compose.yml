@@ -1,2 +1,21 @@
+version: '3.8'
+services:
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  web:
+    build: .
+    depends_on:
+      - redis
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - EXTERNAL_HOST=http://localhost:8080
+      - SECRET_KEY=change-me-in-production
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
 # Docker Compose removed. This repository is configured for local development using a Python virtualenv and a local Redis server.
 # If you need Docker again later, we can recreate a docker-compose.yml.
