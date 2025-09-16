@@ -50,7 +50,7 @@ jobs:
           az group create --name "$RESOURCE_GROUP" --location "$LOCATION"
 
           # Use deterministic storage account name for backend
-          SA_NAME="ephemeralnotestf"
+          SA_NAME="saephemeralnotestf"
           SA_NAME=$(echo "$SA_NAME" | tr '[:upper:]' '[:lower:]')
           echo "Ensuring storage account $SA_NAME exists in $RESOURCE_GROUP"
           az storage account show -n "$SA_NAME" -g "$RESOURCE_GROUP" >/dev/null 2>&1 || \
