@@ -1,5 +1,7 @@
 # Ephemeral Notes ✨📝
 
+Created by Anderson Lopes (<andlopes@microsoft.com>)
+
 A small, privacy-minded ephemeral notes app for local development and testing. Notes are stored in Redis with a TTL and can be optionally password protected and/or set to burn after reading.
 
 ---
@@ -7,10 +9,7 @@ A small, privacy-minded ephemeral notes app for local development and testing. N
 **Quick Links**
 
 - Local quick start: see "Quick start (local)" below
-- Docker quick start: see "Quick start (docker)"
-- Tech used: Flask, Redis, Gunicorn, Docker
- - UI updates: homepage now shows two stat cards (🗂️ Total Notes and 🔥 Active Notes)
- - Recent notes: the Recent Notes list shows the 12 most recent creations (was 10)
+- Tech used: Flask, Redis, Gunicorn
 
 ---
 
@@ -61,55 +60,67 @@ pytest -q
 
 ---
 
-## Quick start (docker) 🐳
+## Environment Variables 🌐
 
-This repo includes a multi-stage `Dockerfile` and a `docker-compose.yml` for local testing.
+To run the application, you need to set the following environment variables:
 
-Build & run with Docker Compose:
+1. **`REDIS_URL`**:
+   - This specifies the connection URL for your Redis instance.
+   - Structure: `rediss://<username>:<password>@<host>:<port>/<db>`
+     - `<username>`: The username for Redis authentication (e.g., `default`).
+     - `<password>`: The Redis access key (e.g., "Shared key primary").
+     - `<host>`: The Redis host URL (e.g., `your-redis-name.redis.cache.windows.net`).
+     - `<port>`: The port number (e.g., `6380` for SSL connections).
+     - `<db>`: The database index (e.g., `0`).
+   - Example:
+     ```bash
+     export REDIS_URL="rediss://default:<your-redis-password>@your-redis-name.redis.cache.windows.net:6380/0"
+     ```
 
-```bash
-docker compose up --build
-```
+2. **`REDIS_PASSWORD`**:
+   - This is the password (access key) for your Redis instance.
+   - Use the "Shared key primary" from your Azure Redis instance.
+   - Example:
+     ```bash
+     export REDIS_PASSWORD="<your-redis-password>"
+     ```
 
-The app will be available at `http://localhost:8080` and Redis will be started by compose.
+3. **`SECRET_KEY`**:
+   - A secure key used by Flask for session management and cryptographic operations.
+   - Generate a secure key using the following command:
+     ```bash
+     export SECRET_KEY=$(python -c "import secrets;print(secrets.token_urlsafe(32))")
+     ```
 
-Run the image directly (example):
-
-```bash
-docker build -t ephemeralnotes:latest .
-docker run -e REDIS_URL=redis://<redis-host>:6379/0 -e SECRET_KEY="replace-me" -p 8080:8080 ephemeralnotes:latest
-```
-
-Notes for Docker / production-ready deploy:
-
-- Do not embed secrets in `docker-compose.yml` — use environment files, Docker secrets, or your cloud provider's secret store.
-- Configure `EXTERNAL_HOST` to the external URL used by your deployment.
-- When running behind TLS (e.g., Azure Web Apps, a reverse proxy), set `Talisman(..., force_https=True)` or ensure TLS is enforced by the platform.
-- The app exposes `/healthz` for a simple health probe.
-
-Local cleanup & git hygiene
-
-- The repository excludes local virtualenvs and cache files via `.gitignore` (e.g. `.venv/`, `__pycache__/`, `*.pyc`, `.env`).
-- I removed local development artifacts (`.venv/`, `__pycache__`) from the workspace to avoid accidental commits. If you want these removals committed and pushed I can make the commit (you requested manual pushes previously).
+4. **`EXTERNAL_HOST`**:
+   - The external URL where your application is hosted.
+   - Example:
+     ```bash
+     export EXTERNAL_HOST="http://localhost:8080"
+     ```
 
 ---
 
 ## Tech stack / Used technologies
 
-Logos are small linked images; if you prefer local logos add them to `static/img/` and reference them instead.
-
 - ⚗️ **Flask** — lightweight Python web framework
 - 🧠 **Redis** — ephemeral data store for notes + TTL
 - 🦄 **Gunicorn** — WSGI server for production
-- 🐳 **Docker** — containerization for local dev and deployment
 
 Other dev tools: `python-dotenv`, `Flask-Limiter`, `Flask-Talisman`, `markdown`, `bleach`.
 
-Recent UI and usability changes
+Recent UI and usability changes:
 
 - Homepage now displays two compact stat cards side-by-side: **🗂️ Total Notes** (total created) and **🔥 Active Notes** (currently active keys in Redis). This helps at-a-glance monitoring during local hosting.
 - The Recent Notes table shows the 12 most recent creation events with masked tokens and TTL/flags metadata (no plaintext content shown).
 - Button styles and spacing were unified across pages for visual consistency.
+- **New Statistics Added**: The dashboard now includes:
+  - Notes Created in the Last 24 Hours
+  - Notes Expired Automatically
+  - Most Shared Note
+  - Peak Usage Time
+- **Clarity Analytics**: Integrated for tracking user interactions.
+- **Welcome Message**: Updated with emojis for a more engaging user experience.
 
 ---
 
@@ -131,13 +142,4 @@ If you'd like, I can add a step-by-step `azure-deploy.md` and a GitHub Actions w
 - Keep `SECRET_KEY` out of the repo. Use environment variables or secrets stores in production.
 - Rotate `SECRET_KEY` if the `.env` was ever committed (there was a local `.env` previously — rotate it now).
 - Consider enabling `force_https=True` in `Talisman` when behind TLS.
-
-Recommended next steps
-
-- Add CSRF protection for form endpoints (Flask-WTF or other CSRF middleware).
-- Consider using Redis keyspace notifications or an atomic counter if you need an exact active-note count (current implementation uses a capped SCAN for a lightweight estimate).
-
----
-
-If you'd like the README to include local logos copied into `static/img/` or a demo GIF, tell me where you'd like the assets and I will add them (I will not push any commits unless you ask me to).
 
